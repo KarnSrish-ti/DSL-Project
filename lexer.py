@@ -15,10 +15,9 @@ def tokenize(line):
             tokens.append(('IDENTIFIER', word))
     return tokens
 
-def lex(scrpit):
+def lex(script):
     all_tokens = []
     lines = script.strip().split('\n')
-
     for line in lines:
         line =line.strip()
         if line == "" or line.startswith("#"):
