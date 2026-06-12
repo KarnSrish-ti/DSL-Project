@@ -1,22 +1,22 @@
 #interpreter.py 
 
-from pyexpat import features
 
 import joblib 
 import numpy as np
-
+import pandas as pd
 # model and encoders load
 model= joblib.load('dispatch_model.joblib')
 le_disaster = joblib.load('le_disaster.joblib')
 le_district = joblib.load('le_district.joblib')
 
-#simulation state 
+#simulation state
 environment ={
     'incidents':[],
     'resources':{},
-    'roads':{}, 
+    'roads':{},
     'alerts':[],
-    'rules': []
+    'rules': [],
+    'dispatches': []
 }
 
 def predict_resources(disaster_type, severity, district):
@@ -39,7 +39,8 @@ def predict_resources(disaster_type, severity, district):
     except ValueError:
         district_enc = 0
 
-    features = np.array([[disaster_enc, severity, road_blocked, district_enc]])
+    features = pd.DataFrame([[disaster_enc, severity, road_blocked, district_enc]],
+                        columns=["disaster_type_enc", "severity", "road_blocked", "district_enc"])
 
     prediction = model.predict(features)[0]
 
@@ -60,6 +61,14 @@ def execute(ast):
                 "road_blocked": road_blocked,
                 "ml_recommended_resources": recommended
             })
+            for rule in environment["rules"]:
+                if severity > rule["threshold"]:
+                    environment["dispatches"].append({
+                        "team": rule["team"],
+                        "district": district,
+                        "disaster": disaster,
+                        "triggered_by": f"severity {severity} > {rule['threshold']}"
+                    })
         elif node_type == "ALLOCATE":
             district = node["district"]
             resource = node["resource"]
@@ -73,6 +82,14 @@ def execute(ast):
                 "threshold": node["threshold"],
                 "team": node["team"]
             })
+            for inc in environment["incidents"]:
+                if inc["severity"] > node["threshold"]:
+                    environment["dispatches"].append({
+                        "team": node["team"],
+                        "district": inc["district"],
+                        "disaster": inc["disaster"],
+                        "triggered_by": f"severity {inc['severity']} > {node['threshold']}"
+                    })
 
         elif node_type == "ROAD_UPDATE":
             key = (node["from_district"], node["to_district"])
@@ -114,8 +131,14 @@ def print_report():
     for rule in environment["rules"]:
         print(f"  IF severity > {rule['threshold']} THEN dispatch {rule['team']}")
 
-    print("\nALERTS ")
+    print("\n DISPATCHES ")
+    if not environment["dispatches"]:
+        print("  None")
+    for d in environment["dispatches"]:
+        print(f"  [{d['disaster']}] {d['district']} → DISPATCH {d['team']} (triggered by: {d['triggered_by']})")
+
+    print("\nALERTS (ARMED) ")
     if not environment["alerts"]:
         print("  None")
     for alert in environment["alerts"]:
-        print(f"  WHEN {alert['condition']} → SEND {alert['message']} TO {alert['target']}")
+        print(f"  ARMED: WHEN {alert['condition']} → SEND {alert['message']} TO {alert['target']}")
