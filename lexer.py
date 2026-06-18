@@ -20,7 +20,7 @@ def lex(script):
     lines = script.strip().split('\n')
     for line in lines:
         line =line.strip()
-        if line == "" or line.startswith("#"):
+        if line == "" or line.startswith("#"):    #Skips blank lines and comment lines (lines beginning with #)
             continue
         tokens = tokenize(line)
         all_tokens.append(tokens)
