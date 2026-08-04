@@ -91,7 +91,7 @@ def parse(token_lines):
     ast = []
     for tokens in token_lines:
         node = parse_line(tokens)
-        if node:s
+        if node:
             ast.append(node)
     return ast
 
